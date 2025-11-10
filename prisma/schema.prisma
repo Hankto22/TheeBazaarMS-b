@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  loyaltyPoints Int @default(0)
+  loyaltyTier String @default("Bronze") // Bronze, Silver, Gold
+  referralCode String? @unique
+  referredBy String?
+  preferences Json? // JSON for vehicle types, preferred services
+  createdAt DateTime @default(now())
+  transactions WashTransaction[]
+  referrals Customer[] @relation("ReferralRelation")
+  referrer Customer? @relation("ReferralRelation", fields: [referredBy], references: [id])
+}
+
+model WashService {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  duration  Int      // in minutes
+  createdAt DateTime @default(now())
+  transactions WashTransaction[]
+}
+
+model WashTransaction {
+  id          String   @id @default(uuid())
+  serviceId   String
+  customerId  String?
+  quantity    Int
+  total       Float
+  paymentMethod String?  // cash, mpesa, card
+  vehicleType String?    // saloon, suv, truck, motorcycle
+  discount    Float?     // discount percentage
+  promoCodeId String?
+  receiptNumber String?  @unique
+  createdAt   DateTime @default(now())
+  service     WashService @relation(fields: [serviceId], references: [id])
+  customer    Customer?   @relation(fields: [customerId], references: [id])
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])
+}
+
+model PromoCode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  discount  Float    // percentage or fixed amount
+  type      String   // percentage, fixed
+  expiry    DateTime?
+  usageLimit Int?
+  usageCount Int @default(0)
+  createdAt DateTime @default(now())
+  transactions WashTransaction[]
+}
+
+model InventoryItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  quantity    Int
+  minStock    Int @default(10)
+  unit        String   // e.g., liters, pieces
+  supplier    String?
+  costPrice   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  usages      InventoryUsage[]
+}
+
+model InventoryUsage {
+  id        String   @id @default(uuid())
+  itemId    String
+  quantity  Int
+  reason    String   // e.g., wash, restock
+  transactionId String?
+  createdAt DateTime @default(now())
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+}
+
+model Staff {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      String   // admin, cashier, attendant
+  password  String   // hashed
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  shifts    StaffShift[]
+  audits    AuditLog[]
+}
+
+model StaffShift {
+  id        String   @id @default(uuid())
+  staffId   String
+  startTime DateTime
+  endTime   DateTime?
+  createdAt DateTime @default(now())
+  staff     Staff @relation(fields: [staffId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  staffId   String
+  action    String   // e.g., login, transaction, service_update
+  details   Json?
+  createdAt DateTime @default(now())
+  staff     Staff @relation(fields: [staffId], references: [id])
+}
+
+model BusinessSettings {
+  id        String   @id @default("settings")
+  name      String
+  logo      String?
+  taxRate   Float @default(0)
+  currency  String @default("KES")
+  receiptFooter String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
