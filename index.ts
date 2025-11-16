@@ -5,7 +5,10 @@ import carwashRoutes from './routes/carwash';
 
 const app = new Hono();
 
-app.use('*', cors());
+app.use('*', cors({
+  origin: "https://thee-bazaar-ms.vercel.app",
+  credentials: true
+}));
 
 app.route('/carwash', carwashRoutes);
 
