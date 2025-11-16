@@ -11,7 +11,7 @@ app.route('/carwash', carwashRoutes);
 
 app.get('/', (c) => c.text('Thee Bazaar Carwash API'));
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 serve({
   fetch: app.fetch,
