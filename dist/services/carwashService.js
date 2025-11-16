@@ -152,13 +152,8 @@ const generateReports = async () => {
             transactions: true,
         },
     });
-    const lowStockAlerts = await prisma_1.prisma.inventoryItem.findMany({
-        where: {
-            quantity: {
-                lte: prisma_1.prisma.inventoryItem.fields.minStock,
-            },
-        },
-    });
+    const allInventoryItems = await prisma_1.prisma.inventoryItem.findMany();
+    const lowStockAlerts = allInventoryItems.filter((item) => item.quantity <= item.minStock);
     return {
         totalTransactions,
         totalRevenue: totalRevenue._sum.total || 0,

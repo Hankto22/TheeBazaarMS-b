@@ -34,8 +34,12 @@ export const saveWash = async (data: any) => {
 
   const transaction = await prisma.washTransaction.create({
     data: {
-      ...data,
+      serviceId: data.serviceId,
+      customerId: data.customerId,
+      quantity: data.quantity,
       total,
+      paymentMethod: data.paymentMethod,
+      vehicleType: data.vehicleType,
       discount: discountAmount,
       promoCodeId,
       receiptNumber,
@@ -88,7 +92,18 @@ export const fetchCustomers = async () =>
   });
 
 export const addCustomer = async (data: any) => {
-  const customer = await prisma.customer.create({ data });
+  const customer = await prisma.customer.create({
+    data: {
+      name: data.name,
+      phone: data.phone,
+      email: data.email,
+      loyaltyPoints: data.loyaltyPoints || 0,
+      loyaltyTier: data.loyaltyTier || 'Bronze',
+      referralCode: data.referralCode,
+      referredBy: data.referredBy,
+      preferences: data.preferences,
+    },
+  });
 
   // Update referral if referredBy exists
   if (data.referredBy) {
