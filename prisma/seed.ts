@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -79,15 +80,20 @@ async function main() {
 
     // Create sample staff
     const staffMembers = [
-      { name: 'Admin User', email: 'admin@theebazaar.com', role: 'admin', password: 'admin123' }, // In production, hash passwords
+      { name: 'Admin User', email: 'admin@theebazaar.com', role: 'admin', password: 'admin123' },
       { name: 'Cashier One', email: 'cashier1@theebazaar.com', role: 'cashier', password: 'cashier123' },
       { name: 'Attendant One', email: 'attendant1@theebazaar.com', role: 'attendant', password: 'attendant123' },
       { name: 'Attendant Two', email: 'attendant2@theebazaar.com', role: 'attendant', password: 'attendant123' },
     ];
 
     for (const staff of staffMembers) {
+      const hashedPassword = await bcrypt.hash(staff.password, 10);
       await prisma.staff.create({
-        data: staff,
+        data: {
+          ...staff,
+          password: hashedPassword,
+          isActive: true,
+        },
       });
     }
 

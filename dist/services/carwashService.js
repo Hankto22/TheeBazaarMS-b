@@ -1,6 +1,32 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeService = exports.modifyService = exports.generateReceiptPDF = exports.sendReceiptEmail = exports.fetchReceipt = exports.modifyBusinessSettings = exports.fetchBusinessSettings = exports.finishShift = exports.beginShift = exports.authenticateStaff = exports.modifyStaff = exports.addStaff = exports.fetchStaff = exports.checkPromoCode = exports.removePromoCode = exports.modifyPromoCode = exports.addPromoCode = exports.fetchPromoCodes = exports.addInventoryUsage = exports.removeInventory = exports.modifyInventory = exports.addInventory = exports.fetchInventory = exports.generateReports = exports.addCustomer = exports.fetchCustomers = exports.fetchWashHistory = exports.saveWash = exports.addService = exports.fetchServices = void 0;
+exports.removeService = exports.modifyService = exports.generateReceiptPDF = exports.sendReceiptEmail = exports.fetchReceipt = exports.modifyBusinessSettings = exports.fetchBusinessSettings = exports.finishShift = exports.beginShift = exports.authenticateStaff = exports.modifyStaff = exports.addStaff = exports.fetchStaff = exports.checkPromoCode = exports.removePromoCode = exports.modifyPromoCode = exports.addPromoCode = exports.fetchPromoCodes = exports.addInventoryUsage = exports.removeInventory = exports.modifyInventory = exports.addInventory = exports.fetchInventory = exports.generateReports = exports.addCustomer = exports.fetchCustomers = exports.fetchWashHistory = exports.saveWash = exports.addService = exports.fetchServices = exports.fetchDashboardData = void 0;
+const fetchDashboardData = async () => {
+    const services = await prisma_1.prisma.washService.findMany();
+    const customers = await prisma_1.prisma.customer.findMany({
+        include: {
+            transactions: {
+                include: { service: true },
+                orderBy: { createdAt: 'desc' },
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+    // Basic stats
+    const totalTransactions = await prisma_1.prisma.washTransaction.count();
+    const totalRevenue = await prisma_1.prisma.washTransaction.aggregate({
+        _sum: { total: true },
+    });
+    return {
+        services,
+        customers,
+        stats: {
+            totalTransactions,
+            totalRevenue: totalRevenue._sum.total || 0,
+        },
+    };
+};
+exports.fetchDashboardData = fetchDashboardData;
 const prisma_1 = require("../db/prisma");
 const fetchServices = async () => prisma_1.prisma.washService.findMany();
 exports.fetchServices = fetchServices;
@@ -33,8 +59,12 @@ const saveWash = async (data) => {
     const total = Math.max(0, baseTotal - discountAmount);
     const transaction = await prisma_1.prisma.washTransaction.create({
         data: {
-            ...data,
+            serviceId: data.serviceId,
+            customerId: data.customerId,
+            quantity: data.quantity,
             total,
+            paymentMethod: data.paymentMethod,
+            vehicleType: data.vehicleType,
             discount: discountAmount,
             promoCodeId,
             receiptNumber,
@@ -83,7 +113,18 @@ const fetchCustomers = async () => prisma_1.prisma.customer.findMany({
 });
 exports.fetchCustomers = fetchCustomers;
 const addCustomer = async (data) => {
-    const customer = await prisma_1.prisma.customer.create({ data });
+    const customer = await prisma_1.prisma.customer.create({
+        data: {
+            name: data.name,
+            phone: data.phone,
+            email: data.email,
+            loyaltyPoints: data.loyaltyPoints || 0,
+            loyaltyTier: data.loyaltyTier || 'Bronze',
+            referralCode: data.referralCode,
+            referredBy: data.referredBy,
+            preferences: data.preferences,
+        },
+    });
     // Update referral if referredBy exists
     if (data.referredBy) {
         await prisma_1.prisma.customer.update({

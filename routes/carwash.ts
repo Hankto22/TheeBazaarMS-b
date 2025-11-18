@@ -1,4 +1,6 @@
+import { getDashboard } from '../controllers/carwashController';
 import { Hono } from 'hono';
+import { authenticateToken, requireRole } from '../middleware/auth';
 import {
   getServices,
   createService,
@@ -31,8 +33,18 @@ import {
   getReceiptPDF,
   emailReceipt,
 } from '../controllers/carwashController';
-
 const carwashRoutes = new Hono();
+
+// Public routes (no auth required)
+carwashRoutes.post('/staff/login', staffLogin);      // Staff login
+carwashRoutes.post('/promos/validate', validatePromoCode); // Validate promo code (for public use)
+carwashRoutes.get('/receipts/:number', getReceipt);  // Get receipt by number (public access)
+carwashRoutes.get('/receipts/:number/pdf', getReceiptPDF); // Get receipt PDF (public access)
+
+// Protected routes (require authentication)
+carwashRoutes.use('/*', authenticateToken);
+
+carwashRoutes.get('/', getDashboard);         // Get dashboard data
 
 carwashRoutes.get('/services', getServices);         // List available wash services
 carwashRoutes.post('/services', createService);      // Add new wash service
@@ -52,17 +64,13 @@ carwashRoutes.get('/promos', getPromoCodes);         // List promo codes
 carwashRoutes.post('/promos', createPromoCode);      // Create promo code
 carwashRoutes.put('/promos/:id', updatePromoCode);   // Update promo code
 carwashRoutes.delete('/promos/:id', deletePromoCode); // Delete promo code
-carwashRoutes.post('/promos/validate', validatePromoCode); // Validate promo code
 carwashRoutes.get('/staff', getStaff);               // List staff
 carwashRoutes.post('/staff', createStaff);           // Create staff
 carwashRoutes.put('/staff/:id', updateStaff);        // Update staff
-carwashRoutes.post('/staff/login', staffLogin);      // Staff login
 carwashRoutes.post('/staff/shift', startShift);      // Start shift
 carwashRoutes.put('/staff/shift/:id/end', endShift); // End shift
 carwashRoutes.get('/settings', getBusinessSettings); // Get business settings
 carwashRoutes.put('/settings', updateBusinessSettings); // Update settings
-carwashRoutes.get('/receipts/:number', getReceipt);  // Get receipt by number
-carwashRoutes.get('/receipts/:number/pdf', getReceiptPDF); // Get receipt PDF
 carwashRoutes.post('/receipts/:number/email', emailReceipt); // Email receipt
 
 export default carwashRoutes;

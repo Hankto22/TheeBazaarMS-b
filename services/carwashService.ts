@@ -1,3 +1,30 @@
+export const fetchDashboardData = async () => {
+  const services = await prisma.washService.findMany();
+  const customers = await prisma.customer.findMany({
+    include: {
+      transactions: {
+        include: { service: true },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Basic stats
+  const totalTransactions = await prisma.washTransaction.count();
+  const totalRevenue = await prisma.washTransaction.aggregate({
+    _sum: { total: true },
+  });
+
+  return {
+    services,
+    customers,
+    stats: {
+      totalTransactions,
+      totalRevenue: totalRevenue._sum.total || 0,
+    },
+  };
+};
 import { prisma } from '../db/prisma';
 
 export const fetchServices = async () => prisma.washService.findMany();
@@ -270,7 +297,16 @@ export const fetchStaff = async () =>
     orderBy: { createdAt: 'desc' },
   });
 
-export const addStaff = async (data: any) => prisma.staff.create({ data });
+export const addStaff = async (data: any) => {
+  // Hash password before saving
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+  return prisma.staff.create({
+    data: {
+      ...data,
+      password: hashedPassword,
+    },
+  });
+};
 
 export const modifyStaff = async (id: string, data: any) =>
   prisma.staff.update({
@@ -278,12 +314,21 @@ export const modifyStaff = async (id: string, data: any) =>
     data,
   });
 
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../middleware/auth';
+
 export const authenticateStaff = async (data: any) => {
   const staff = await prisma.staff.findUnique({
     where: { email: data.email },
   });
 
-  if (!staff || staff.password !== data.password) { // In production, use proper hashing
+  if (!staff || !staff.isActive) {
+    return { success: false, message: 'Invalid credentials' };
+  }
+
+  // Check password
+  const isValidPassword = await bcrypt.compare(data.password, staff.password);
+  if (!isValidPassword) {
     return { success: false, message: 'Invalid credentials' };
   }
 
@@ -295,7 +340,15 @@ export const authenticateStaff = async (data: any) => {
     },
   });
 
-  return { success: true, staff };
+  // Generate JWT token
+  const token = generateToken({
+    id: staff.id,
+    email: staff.email,
+    role: staff.role,
+    name: staff.name,
+  });
+
+  return { success: true, staff, token };
 };
 
 export const beginShift = async (data: any) =>
